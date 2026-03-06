@@ -1,44 +1,35 @@
 # 🟩 Wordle Analytics Pipeline
 
-> A full data engineering project that extracts historical Wordle answers, transforms the data through a layered dbt pipeline, and serves predictions and insights via an interactive Streamlit dashboard.
-
----
-
-## 🎯 What This Project Does
-
-1. **Extracts** daily Wordle answers from the web
-2. **Loads** raw data into a local DuckDB database
-3. **Transforms** it through staging → intermediate → marts using dbt
-4. **Predicts** the most likely next Wordle word based on letter and positional frequency
-5. **Visualizes** everything in a Streamlit dashboard
+> A full data engineering project that extracts historical Wordle answers, transforms the data through a layered dbt pipeline, and serves letter analysis, difficulty trends, and next-word predictions via an interactive Streamlit dashboard.
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌───────────────────┐
-│  extract_       │     │              │     │   dbt models    │     │   Streamlit       │
-│  wordle.py      │────▶│  wordle.db   │────▶│   (3 layers)    │────▶│   dashboard.py    │
-│  (ingestion)    │     │  (DuckDB)    │     │   (transform)   │     │   (visualization) │
-└─────────────────┘     └──────────────┘     └─────────────────┘     └───────────────────┘
-        ▲                                              ▲
-        │                                              │
-   pipeline.py ─────────────────────────────────────────
-   (orchestration — runs everything daily)
+┌──────────────────────┐     ┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│  extract_wordle.py   │────▶│   wordle.db      │────▶│   dbt models         │────▶│   dashboard.py      │
+│                      │     │   (DuckDB)       │     │   staging            │     │                     │
+│  wordlehints.co.uk   │     │                  │     │   intermediate       │     │   Predictions       │
+│  API (free, no auth) │     │  raw_wordle_words│     │   marts              │     │   Letter Analysis   │
+│                      │     │                  │     │                      │     │   Position Heatmap  │
+└──────────────────────┘     └─────────────────┘     └──────────────────────┘     │   History           │
+           ▲                                                                        └─────────────────────┘
+           │
+  pipeline.py — orchestrates all steps daily
 ```
 
 ---
 
 ## 🛠️ Stack
 
-| Phase | Tool | Why |
+| Phase | Tool | Purpose |
 |---|---|---|
-| Ingestion | Python + `requests` + `beautifulsoup4` | Scrape & parse Wordle pages |
-| Storage | DuckDB | Local, serverless, fast analytics SQL |
-| Transformation | dbt-core + dbt-duckdb | Layered SQL models with lineage |
-| Orchestration | `schedule` | Lightweight daily cron-like runner |
-| Visualization | Streamlit + Plotly | Interactive dashboard in pure Python |
+| Ingestion | Python + `requests` | Fetch Wordle answers from wordlehints API |
+| Storage | DuckDB | Local serverless analytical database |
+| Transformation | dbt-core + dbt-duckdb | Layered SQL models with lineage & tests |
+| Orchestration | `schedule` | Daily pipeline runner |
+| Visualization | Streamlit + Plotly | Interactive analytics dashboard |
 
 ---
 
@@ -48,40 +39,48 @@
 wordle-analytics/
 │
 ├── 📂 ingestion/
-│   └── extract_wordle.py          # Fetches daily Wordle word → loads to DuckDB
+│   └── extract_wordle.py          # Fetches Wordle answers → loads to DuckDB
 │
-├── 📂 dbt_wordle/                 # dbt project root
-│   ├── dbt_project.yml            # Materialization config per layer
-│   ├── profiles.yml               # DuckDB connection
+├── 📂 dbt_wordle/                 # dbt project
+│   ├── dbt_project.yml
+│   ├── profiles.yml               # DuckDB connection (../data/wordle.db)
+│   ├── packages.yml
 │   │
 │   ├── 📂 models/
-│   │   ├── 📂 staging/
-│   │   │   └── stg_wordle_words.sql         # Clean & standardize raw data
+│   │   ├── 📂 staging/            # view — clean & standardize raw data
+│   │   │   ├── schema.yml
+│   │   │   └── stg_wordle_words.sql
 │   │   │
-│   │   ├── 📂 intermediate/
-│   │   │   ├── int_letter_frequency.sql     # Letter usage counts
-│   │   │   └── int_position_frequency.sql  # Letter frequency per position (1-5)
+│   │   ├── 📂 intermediate/       # ephemeral — business logic CTEs
+│   │   │   ├── schema.yml
+│   │   │   ├── int_letter_frequency.sql
+│   │   │   ├── int_position_frequency.sql
+│   │   │   └── int_difficulty_by_pattern.sql
 │   │   │
-│   │   └── 📂 marts/
-│   │       ├── mart_word_scores.sql         # Score every 5-letter candidate word
-│   │       └── mart_top_predictions.sql     # Top 10 predicted next words
+│   │   └── 📂 marts/              # table — final outputs for dashboard
+│   │       ├── schema.yml
+│   │       ├── mart_letter_frequency.sql
+│   │       ├── mart_position_heatmap.sql
+│   │       ├── mart_answer_history.sql
+│   │       ├── mart_word_scores.sql
+│   │       └── mart_top_predictions.sql
 │   │
 │   ├── 📂 seeds/
-│   │   └── all_5_letter_words.csv          # Reference list of valid 5-letter words
+│   │   └── all_5_letter_words.csv  # Reference list of all valid 5-letter words
 │   │
 │   └── 📂 tests/
-│       └── assert_no_duplicate_words.sql   # Data quality checks
+│       └── assert_no_duplicate_answers.sql
 │
 ├── 📂 orchestration/
-│   └── pipeline.py                # Runs ingestion + dbt run + dbt test daily
+│   └── pipeline.py                # Runs ingestion + dbt daily
 │
 ├── 📂 visualization/
-│   └── dashboard.py               # Streamlit app — charts + predictions
+│   └── dashboard.py               # Streamlit dashboard
 │
 ├── 📂 data/
-│   └── wordle.db                  # DuckDB database file (auto-created on first run)
+│   └── wordle.db                  # DuckDB file (auto-created, gitignored)
 │
-├── .env                           # Environment config
+├── .env
 ├── .gitignore
 ├── pyproject.toml                 # uv dependency management
 └── README.md
@@ -92,29 +91,55 @@ wordle-analytics/
 ## 🧱 dbt Layer Strategy
 
 ```
-raw_wordle_words  (DuckDB table — loaded by ingestion script)
-       │
-       ▼
-┌─────────────┐   materialized: view
-│   staging   │   Light cleaning only — rename columns, cast types, filter nulls
-└─────────────┘
-       │
-       ▼
-┌──────────────┐  materialized: ephemeral
-│ intermediate │  Business logic — letter counts, position frequency calculations
-└──────────────┘
-       │
-       ▼
-┌───────────┐      materialized: table
-│   marts   │      Final outputs — word scores, top 10 predictions, ready for dashboard
-└───────────┘
+raw_wordle_words  (loaded by ingestion script)
+        │
+        ▼
+┌─────────────┐  materialized: view
+│   staging   │  Clean raw data — uppercase, extract letters 1–5,
+└─────────────┘  vowel count, unique letter count, difficulty bucket
+        │
+        ▼
+┌──────────────┐  materialized: ephemeral (CTE, never stored)
+│ intermediate │  Letter frequency, positional frequency,
+└──────────────┘  difficulty pattern aggregations
+        │
+        ▼
+┌───────────┐      materialized: table (queried by dashboard)
+│   marts   │      Word scores, top 10 predictions, answer history,
+└───────────┘      letter frequency charts, position heatmap
 ```
 
 | Layer | Materialization | Reason |
 |---|---|---|
 | `staging/` | `view` | Always fresh, zero storage cost |
-| `intermediate/` | `ephemeral` | Helper logic injected as CTEs, never stored |
-| `marts/` | `table` | Queried heavily by dashboard, needs to be fast |
+| `intermediate/` | `ephemeral` | Helper logic, never queried directly |
+| `marts/` | `table` | Fast reads for dashboard |
+
+---
+
+## 🔮 How Prediction Works
+
+```
+1. All valid 5-letter words  (from seeds/all_5_letter_words.csv)
+2. Remove already-used Wordle answers
+3. Score each remaining word:
+      score = Σ (letter_frequency_pct + position_frequency_pct) for each of 5 letters
+4. Rank by score descending
+5. Top 10 = most likely next answers
+```
+
+---
+
+## 📊 Dashboard
+
+Four tabs powered by DuckDB mart tables:
+
+| Tab | Content |
+|---|---|
+| 🔮 Predictions | Top 10 predicted next words with score bars + per-position breakdown |
+| 📊 Letter Analysis | Full letter frequency bar chart + top 10 with visual bars |
+| 🔥 Position Heatmap | 26×5 heatmap of letter × position frequency |
+| 📅 History | Difficulty over time, distribution pie, vowel counts, recent answers table |
 
 ---
 
@@ -123,65 +148,60 @@ raw_wordle_words  (DuckDB table — loaded by ingestion script)
 ### Prerequisites
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) installed
-- VS Code with Claude Code extension (optional but recommended)
 
-### Installation
+### Install
 
 ```powershell
-# 1. Clone the project
 git clone https://github.com/your-username/wordle-analytics.git
 cd wordle-analytics
-
-# 2. Install dependencies with uv
 uv sync
 ```
 
-### Running the Pipeline
+### Full word list seed
+Download the complete 5-letter word list and add a `word` header:
 
 ```powershell
-# Step 1 — Load historical Wordle words into DuckDB
-uv run python ingestion/extract_wordle.py
+# Download
+curl https://raw.githubusercontent.com/tabatkins/wordle-list/main/words -o temp.txt
 
-# Step 2 — Seed reference word list
-cd dbt_wordle
-uv run dbt seed
-
-# Step 3 — Run all dbt transformations
-uv run dbt run
-
-# Step 4 — Run data quality tests
-uv run dbt test
-
-# Step 5 — Launch dashboard
-uv run streamlit run visualization/dashboard.py
+# Add header and save as seed
+"word" | Set-Content dbt_wordle\seeds\all_5_letter_words.csv
+Get-Content temp.txt | Add-Content dbt_wordle\seeds\all_5_letter_words.csv
+Remove-Item temp.txt
 ```
 
-### Run Everything at Once (Daily Pipeline)
+---
+
+## ▶️ Running
+
+### Run once manually
 
 ```powershell
 uv run python orchestration/pipeline.py
 ```
 
----
+### Run on a daily schedule (08:00)
 
-## 📊 Dashboard Features
-
-- 📈 **Letter frequency bar chart** — most common letters in Wordle answers
-- 🔥 **Position heatmap** — which letters appear most in each position (1–5)
-- 📅 **Answer timeline** — browse all historical answers
-- 🔮 **Top 10 predictions** — ranked candidate words for tomorrow's answer
-
----
-
-## 🔮 How Prediction Works
-
+```powershell
+uv run python orchestration/pipeline.py --schedule
 ```
-1. Take all valid 5-letter English words (from seeds/all_5_letter_words.csv)
-2. Remove words already used as Wordle answers
-3. Score each remaining word:
-      score = sum of (letter frequency × position frequency) for each of 5 letters
-4. Rank by score descending
-5. Top 10 = most likely next answers
+
+### Run steps individually
+
+```powershell
+# 1. Ingest
+uv run python ingestion/extract_wordle.py
+
+# 2. dbt (from inside dbt_wordle/)
+cd dbt_wordle
+uv run dbt deps
+uv run dbt seed --profiles-dir .
+uv run dbt run  --profiles-dir .
+uv run dbt test --profiles-dir .
+
+# 3. Dashboard
+cd ..
+uv run streamlit run visualization/dashboard.py
 ```
 
 ---
@@ -190,15 +210,16 @@ uv run python orchestration/pipeline.py
 
 | Test | What it checks |
 |---|---|
-| `assert_no_duplicate_words` | No word appears twice in answer history |
+| `unique` on `puzzle_number` | No puzzle number appears twice |
 | `not_null` on `answer` | Every row has a word |
 | `not_null` on `date` | Every row has a date |
-| `unique` on `puzzle_number` | Puzzle numbers are distinct |
+| `assert_no_duplicate_answers` | No word used more than twice (NYT repeats answers intentionally since 2024) |
 
 ---
 
 ## 📝 Notes
 
-- DuckDB database (`data/wordle.db`) is excluded from git — regenerate locally by running ingestion
-- `profiles.yml` points to `../data/wordle.db` relative to the `dbt_wordle/` folder
-- The prediction model is statistical, not guaranteed — NYT curates answers manually
+- `data/wordle.db` is gitignored — regenerate locally by running the pipeline
+- wordlehints API includes a difficulty score (1.0–5.0) not available from NYT directly
+- The prediction model is statistical — NYT curates answers manually so results are probabilistic
+- dbt models all land in the DuckDB `main` schema alongside raw tables
