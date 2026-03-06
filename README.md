@@ -152,7 +152,7 @@ Four tabs powered by DuckDB mart tables:
 ### Install
 
 ```powershell
-git clone https://github.com/your-username/wordle-analytics.git
+git clone https://github.com/amaknabil/wordle.git
 cd wordle-analytics
 uv sync
 ```
