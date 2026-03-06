@@ -1,0 +1,7 @@
+dbt_wordle:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/wordle.db
+      threads: 4

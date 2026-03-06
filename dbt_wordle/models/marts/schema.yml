@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: mart_letter_frequency
+    description: >
+      Overall letter frequency across all Wordle answers.
+      Direct source for dashboard bar chart.
+    columns:
+      - name: letter
+        tests: [not_null, unique]
+      - name: total_count
+        tests: [not_null]
+      - name: frequency_pct
+        tests: [not_null]
+      - name: frequency_rank
+        tests: [not_null]
+
+  - name: mart_position_heatmap
+    description: >
+      Letter frequency per position (1–5) for dashboard heatmap.
+      One row per letter + position combination.
+    columns:
+      - name: position
+        tests: [not_null]
+      - name: letter
+        tests: [not_null]
+      - name: position_count
+        tests: [not_null]
+      - name: position_pct
+        tests: [not_null]
+
+  - name: mart_answer_history
+    description: >
+      Full enriched history of every Wordle answer with letter breakdown,
+      difficulty, vowel count, and word commonality score.
+      Used by dashboard timeline and analysis charts.
+    columns:
+      - name: puzzle_number
+        tests: [not_null, unique]
+      - name: answer
+        tests: [not_null]
+      - name: answer_date
+        tests: [not_null]
+      - name: difficulty
+        description: NYT difficulty rating — may be null for older puzzles
+
+  - name: mart_word_scores
+    description: >
+      Every valid 5-letter candidate word scored by letter + positional frequency.
+      Words already used as answers are flagged with already_used = true.
+    columns:
+      - name: word
+        tests: [not_null, unique]
+      - name: total_score
+        tests: [not_null]
+      - name: already_used
+        tests: [not_null]
+
+  - name: mart_top_predictions
+    description: >
+      Top 10 candidate words most likely to be the next Wordle answer.
+      Already-used words are excluded. Primary output for the dashboard.
+    columns:
+      - name: rank
+        tests: [not_null, unique]
+      - name: word
+        tests: [not_null, unique]
+      - name: total_score
+        tests: [not_null]

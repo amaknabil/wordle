@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw Wordle data loaded by ingestion script into DuckDB
+    schema: main
+    tables:
+      - name: raw_wordle_words
+        description: One row per daily Wordle puzzle answer
+        columns:
+          - name: puzzle_number
+            description: NYT puzzle number (e.g. 1721)
+            tests:
+              - not_null
+              - unique
+          - name: answer
+            description: The 5-letter answer word
+            tests:
+              - not_null
+          - name: date
+            description: Date the puzzle was published (YYYY-MM-DD)
+            tests:
+              - not_null
+              - unique
+          - name: day_name
+            description: Day of the week (e.g. Friday)
+          - name: difficulty
+            description: NYT difficulty rating (1.0 - 5.0)
+
+models:
+  - name: stg_wordle_words
+    description: >
+      Cleaned and standardized Wordle answers. Uppercased, trimmed,
+      individual letters extracted, date parts split out.
+    columns:
+      - name: puzzle_number
+        tests: [not_null, unique]
+      - name: answer
+        tests: [not_null]
+      - name: answer_date
+        tests: [not_null, unique]
+      - name: letter_1
+        tests: [not_null]
+      - name: letter_2
+        tests: [not_null]
+      - name: letter_3
+        tests: [not_null]
+      - name: letter_4
+        tests: [not_null]
+      - name: letter_5
+        tests: [not_null]

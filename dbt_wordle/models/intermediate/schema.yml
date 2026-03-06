@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: int_letter_frequency
+    description: >
+      Overall frequency of each letter across all Wordle answers.
+      Used to score candidate words by how common their letters are.
+    columns:
+      - name: letter
+        tests: [not_null, unique]
+      - name: total_count
+        tests: [not_null]
+      - name: frequency_pct
+        tests: [not_null]
+      - name: frequency_rank
+        tests: [not_null]
+
+  - name: int_position_frequency
+    description: >
+      Frequency of each letter in each position (1–5) across all answers.
+      Used for positional scoring — e.g. S is common in position 1.
+    columns:
+      - name: position
+        tests: [not_null]
+      - name: letter
+        tests: [not_null]
+      - name: position_count
+        tests: [not_null]
+      - name: position_pct
+        tests: [not_null]
+
+  - name: int_difficulty_by_pattern
+    description: >
+      Average difficulty grouped by vowel count, unique letter count,
+      and difficulty bucket. Used in mart_answer_history enrichment.
+    columns:
+      - name: vowel_count
+        tests: [not_null]
+      - name: unique_letter_count
+        tests: [not_null]
+      - name: difficulty_bucket
+        tests: [not_null]
