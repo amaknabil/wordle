@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+# dbt
+dbt_wordle/target/
+dbt_wordle/dbt_packages/
+dbt_wordle/logs/
+
+# DuckDB
+data/wordle.db
+
+# OS
+.DS_Store
+Thumbs.db
